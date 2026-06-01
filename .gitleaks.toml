@@ -1,0 +1,12 @@
+# Gitleaks configuration for RateMaster
+# See https://github.com/gitleaks/gitleaks#configuration
+
+title = "RateMaster Gitleaks Config"
+
+[allowlist]
+  description = "Global allowlist"
+  paths = [
+    '''(^|/)target/''',
+    '''(^|/)\.idea/''',
+    '''(^|/)\.git/''',
+  ]
