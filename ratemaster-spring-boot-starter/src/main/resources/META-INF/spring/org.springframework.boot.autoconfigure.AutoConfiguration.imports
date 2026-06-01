@@ -1,0 +1,3 @@
+# RateMaster auto-configuration classes will be registered here.
+# Format: one fully-qualified class name per line.
+# Example: io.ratemaster.starter.RateMasterAutoConfiguration
