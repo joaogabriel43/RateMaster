@@ -139,6 +139,7 @@ class TokenBucketPropertyIT {
         String key = "prop-burst:" + UUID.randomUUID();
         int totalRequests = (int) config.maxCapacity() + 20; // Request more than capacity
 
+        long startNanos = System.nanoTime();
         long allowedCount = 0;
         for (int i = 0; i < totalRequests; i++) {
             RateLimitResult result = rateLimiter.tryAcquire(key, config);
@@ -146,13 +147,17 @@ class TokenBucketPropertyIT {
                 allowedCount++;
             }
         }
+        long elapsedNanos = System.nanoTime() - startNanos;
 
-        // In a tight loop, allowed count should be at most maxCapacity + a small
-        // tolerance for refill that may occur during execution (sub-millisecond)
-        long upperBound = config.maxCapacity() + 2; // +2 for potential micro-refill
+        // Upper bound: initial capacity + tokens that could have been refilled
+        // during the loop execution time, plus a small tolerance for timing jitter
+        double elapsedSeconds = elapsedNanos / 1_000_000_000.0;
+        long maxRefilled = (long) Math.ceil(elapsedSeconds * config.refillRatePerSecond());
+        long upperBound = config.maxCapacity() + maxRefilled + 2; // +2 for timing tolerance
         assertTrue(allowedCount <= upperBound,
                 "Burst allowed count (" + allowedCount + ") should not exceed "
-                        + "maxCapacity + tolerance (" + upperBound + ") for config " + config);
+                        + "mathematical upper bound (" + upperBound + ") for config " + config
+                        + " over " + String.format("%.3f", elapsedSeconds) + "s");
     }
 
     /**
