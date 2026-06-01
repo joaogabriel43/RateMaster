@@ -43,3 +43,6 @@ dc.jsondb/
 
 # === SpotBugs ===
 spotbugsXml.xml
+
+# === jqwik ===
+.jqwik-database/
