@@ -38,4 +38,10 @@ public class RateLimitExceptionHandler {
 
         return new ResponseEntity<>(body, headers, HttpStatus.TOO_MANY_REQUESTS);
     }
+
+    @ExceptionHandler(io.ratemaster.starter.exception.RedisUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleRedisUnavailable(io.ratemaster.starter.exception.RedisUnavailableException ex) {
+        Map<String, String> body = Collections.singletonMap("error", "Service Unavailable");
+        return new ResponseEntity<>(body, HttpStatus.SERVICE_UNAVAILABLE);
+    }
 }

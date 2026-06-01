@@ -47,10 +47,11 @@
             <optional>true</optional>
         </dependency>
 
-        <!-- Spring Boot AspectJ (Boot 4.0 renamed from AOP) -->
+        <!-- Spring Boot AOP -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aspectj</artifactId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+            <version>3.2.5</version>
         </dependency>
 
         <!-- Spring Boot Actuator -->

@@ -75,5 +75,49 @@ class RateMasterIntegrationIT {
                     assertThat(retryResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
                 });
     }
-}
+    @Test
+    void shouldHandleRedisTimeoutsWithConfiguredFallbacks() throws Exception {
+        RestClient restClient = RestClient.builder().baseUrl("http://localhost:" + port).build();
+        
+        // Pause Redis to simulate a hard timeout
+        REDIS.getDockerClient().pauseContainerCmd(REDIS.getContainerId()).exec();
+        
+        try {
+            // Test A & C: Fallback OPEN returns 200
+            ResponseEntity<Map> responseOpen = restClient.get().uri("/api/fallback-open").retrieve().toEntity(Map.class);
+            assertThat(responseOpen.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(responseOpen.getBody()).containsEntry("message", "open");
+            
+            // Test B & C: Fallback CLOSED returns 503
+            org.springframework.web.client.HttpServerErrorException ex = catchThrowableOfType(
+                    () -> restClient.get().uri("/api/fallback-closed").retrieve().toEntity(Map.class),
+                    org.springframework.web.client.HttpServerErrorException.class
+            );
+            assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+            
+        } finally {
+            // Unpause Redis to restore health for other potential tests or teardown
+            REDIS.getDockerClient().unpauseContainerCmd(REDIS.getContainerId()).exec();
+        }
 
+        // Test D: Verify Actuator Metrics
+        await().atMost(5, SECONDS).untilAsserted(() -> {
+            ResponseEntity<Map> metricsAllowed = catchThrowableOfType(
+                    () -> restClient.get().uri("/actuator/metrics/ratemaster.requests.allowed").retrieve().toEntity(Map.class),
+                    HttpClientErrorException.class) == null 
+                    ? restClient.get().uri("/actuator/metrics/ratemaster.requests.allowed").retrieve().toEntity(Map.class)
+                    : null;
+                    
+            ResponseEntity<Map> metricsRejected = catchThrowableOfType(
+                    () -> restClient.get().uri("/actuator/metrics/ratemaster.requests.rejected").retrieve().toEntity(Map.class),
+                    HttpClientErrorException.class) == null
+                    ? restClient.get().uri("/actuator/metrics/ratemaster.requests.rejected").retrieve().toEntity(Map.class)
+                    : null;
+
+            assertThat(metricsAllowed).isNotNull();
+            assertThat(metricsRejected).isNotNull();
+            assertThat(metricsAllowed.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(metricsRejected.getStatusCode()).isEqualTo(HttpStatus.OK);
+        });
+    }
+}

@@ -14,4 +14,16 @@ public class DemoController {
     public Map<String, String> hello() {
         return Map.of("message", "Hello, RateMaster!");
     }
+
+    @GetMapping("/api/fallback-open")
+    @RateLimit(name = "fallbackOpenApi", capacity = 10, refillRate = 10, fallback = io.ratemaster.starter.annotation.RateLimitFallback.OPEN)
+    public Map<String, String> fallbackOpen() {
+        return Map.of("message", "open");
+    }
+
+    @GetMapping("/api/fallback-closed")
+    @RateLimit(name = "fallbackClosedApi", capacity = 10, refillRate = 10, fallback = io.ratemaster.starter.annotation.RateLimitFallback.CLOSED)
+    public Map<String, String> fallbackClosed() {
+        return Map.of("message", "closed");
+    }
 }

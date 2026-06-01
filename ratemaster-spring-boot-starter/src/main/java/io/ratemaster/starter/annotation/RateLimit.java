@@ -55,4 +55,11 @@ public @interface RateLimit {
      * @return the SpEL expression
      */
     String spelKey() default "";
+
+    /**
+     * The fallback behavior to execute if the rate limit storage becomes unavailable.
+     *
+     * @return the fallback strategy
+     */
+    RateLimitFallback fallback() default RateLimitFallback.OPEN;
 }
