@@ -64,6 +64,39 @@ Nunca tentar anotar atributos de @interface com constraints de BV.
   arquivos-fonte reais — nunca resumos. Tratar qualquer resumo de IA como hipótese
   a verificar contra o código, não como fato consolidado.
 
+### [2026-06-02] Armadilhas de CI/CD em multi-módulo Maven + GitHub Actions
+Durante a promoção a v1.0.0, o pipeline nunca tinha passado dos primeiros scanners e
+cada correção destravava o próximo problema latente. Lições, em ordem de descoberta:
+
+1. **Trigger de tag**: `on.push` com `branches:` mas sem `tags:` faz o Actions IGNORAR
+   pushes de tag — um `if: startsWith(github.ref,'refs/tags/v')` no job vira config morta.
+   Para publicar em tag, declarar `on.push.tags: ['v*']`. O workflow usado é o do commit
+   que a tag aponta — logo o fix do `ci.yml` precisa estar NO commit taggeado.
+2. **Versionar ferramentas baixadas como `latest`**: o GitLeaks removeu a flag `--source`
+   do subcomando `git` (path agora é posicional: `gitleaks git . ...`). Pinar a versão
+   (mesma lição do jqwik) e validar a sintaxe da CLI.
+3. **Override de versão em BOM IMPORTADO não funciona via propriedade**: como importamos
+   `spring-boot-dependencies` (em vez de herdar o starter-parent), redefinir
+   `<tomcat.version>` é IGNORADO na resolução das deps gerenciadas pelo BOM. Fix: gerenciar
+   o artefato explicitamente em `<dependencyManagement>`, declarado ANTES do import do BOM.
+4. **`dependency-check:check` num job sem `mvn install`**: módulos irmãos (ex.: o starter
+   depende de `ratemaster-core`) não resolvem. Rodar `mvn install -DskipTests` antes dos
+   analisadores Maven (vale também para `spotbugs:check`).
+5. **OWASP dependency-check sem `NVD_API_KEY` é inviável em CI**: a NVD devolve HTTP 429
+   para requisições anônimas, falha o update após dezenas de retries e corrompe o H2.
+   Estratégia adotada: Trivy é o hard-gate de SCA; OWASP só roda quando há secret
+   `NVD_API_KEY` (`if: env.NVD_API_KEY != ''`).
+6. **SpotBugs latente**: ao rodar pela 1ª vez achou `CT_CONSTRUCTOR_THROW` (lançar exceção
+   em construtor → vetor de finalizer attack; fix: classe `final`) e `EI_EXPOSE_REP` em
+   `@ConfigurationProperties` (getters DEVEM expor holders mutáveis p/ o binding do Spring;
+   fix: exclude filter escopado à classe, nunca disable global).
+7. **Publish no GitHub Packages = 401**: o `GITHUB_TOKEN` precisa de `packages: write`
+   no job (o top-level era `contents: read`); e o `setup-java` espera NOMES de env var em
+   `server-username`/`server-password` (`GITHUB_ACTOR`/`GITHUB_TOKEN`), não valores.
+- **Padrão de release adotado**: iterar os fixes de CI na `main` (build+scan, sem publicar),
+  e só re-apontar/force-push a tag para o commit verde — assim o run da tag publica de
+  primeira e o cache fica quente.
+
 ## 📐 Padrões do Projeto
 
 ### Validação de atributos de annotation
