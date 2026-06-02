@@ -4,8 +4,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.ratemaster.core.algorithm.TokenBucketRateLimiter;
 import io.ratemaster.core.algorithm.SlidingWindowRateLimiter;
+import io.ratemaster.core.algorithm.FixedWindowRateLimiter;
 import io.ratemaster.core.config.TokenBucketConfig;
 import io.ratemaster.core.config.SlidingWindowConfig;
+import io.ratemaster.core.config.FixedWindowConfig;
 import io.ratemaster.core.model.RateLimitResult;
 import io.ratemaster.starter.annotation.RateLimit;
 import io.ratemaster.starter.annotation.RateLimitAlgorithm;
@@ -42,6 +44,7 @@ public class RateLimitAspect {
 
     private final TokenBucketRateLimiter tokenBucketRateLimiter;
     private final SlidingWindowRateLimiter slidingWindowRateLimiter;
+    private final FixedWindowRateLimiter fixedWindowRateLimiter;
     private final ApplicationContext applicationContext;
     private final RateMasterProperties properties;
     private final RateLimiterFailureHandler failureHandler;
@@ -53,6 +56,7 @@ public class RateLimitAspect {
     public RateLimitAspect(
             TokenBucketRateLimiter tokenBucketRateLimiter, 
             SlidingWindowRateLimiter slidingWindowRateLimiter,
+            FixedWindowRateLimiter fixedWindowRateLimiter,
             ApplicationContext applicationContext,
             RateMasterProperties properties,
             RateLimiterFailureHandler failureHandler,
@@ -60,6 +64,7 @@ public class RateLimitAspect {
             Executor executor) {
         this.tokenBucketRateLimiter = Objects.requireNonNull(tokenBucketRateLimiter, "tokenBucketRateLimiter must not be null");
         this.slidingWindowRateLimiter = Objects.requireNonNull(slidingWindowRateLimiter, "slidingWindowRateLimiter must not be null");
+        this.fixedWindowRateLimiter = Objects.requireNonNull(fixedWindowRateLimiter, "fixedWindowRateLimiter must not be null");
         this.applicationContext = Objects.requireNonNull(applicationContext, "applicationContext must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.failureHandler = Objects.requireNonNull(failureHandler, "failureHandler must not be null");
@@ -86,6 +91,12 @@ public class RateLimitAspect {
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             throw new IllegalArgumentException(
                 "RateLimit on " + signature.getMethod().getName() + ": windowSeconds must be positive for SLIDING_WINDOW");
+        }
+
+        if (rateLimit.algorithm() == RateLimitAlgorithm.FIXED_WINDOW && rateLimit.windowSeconds() <= 0) {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            throw new IllegalArgumentException(
+                "RateLimit on " + signature.getMethod().getName() + ": windowSeconds must be positive for FIXED_WINDOW");
         }
 
         RateLimitKeyResolver resolver = getResolver(rateLimit.keyResolver());
@@ -190,6 +201,9 @@ public class RateLimitAspect {
         if (rateLimit.algorithm() == RateLimitAlgorithm.SLIDING_WINDOW) {
             SlidingWindowConfig config = new SlidingWindowConfig(rateLimit.capacity(), rateLimit.windowSeconds());
             return slidingWindowRateLimiter.tryAcquire(logicalKey, config);
+        } else if (rateLimit.algorithm() == RateLimitAlgorithm.FIXED_WINDOW) {
+            FixedWindowConfig config = new FixedWindowConfig(rateLimit.capacity(), rateLimit.windowSeconds());
+            return fixedWindowRateLimiter.tryAcquire(logicalKey, config);
         } else {
             TokenBucketConfig config = new TokenBucketConfig(rateLimit.capacity(), rateLimit.refillRate());
             return tokenBucketRateLimiter.tryAcquire(logicalKey, config);

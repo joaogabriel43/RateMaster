@@ -17,5 +17,12 @@ public enum RateLimitAlgorithm {
      * The Sliding Window algorithm. Provides precise rate limiting across
      * a continuous time window, preventing boundary burst effects.
      */
-    SLIDING_WINDOW
+    SLIDING_WINDOW,
+
+    /**
+     * The Fixed Window algorithm. A highly scalable approach that counts
+     * requests in absolute time boundaries. May allow double capacity bursts
+     * at window edges.
+     */
+    FIXED_WINDOW
 }

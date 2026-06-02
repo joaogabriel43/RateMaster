@@ -63,6 +63,12 @@ public class RateMasterAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public io.ratemaster.core.algorithm.FixedWindowRateLimiter fixedWindowRateLimiter(LuaScriptExecutor luaScriptExecutor) {
+        return new io.ratemaster.core.algorithm.FixedWindowRateLimiter(luaScriptExecutor);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public IpKeyResolver ipKeyResolver() {
         return new IpKeyResolver();
     }
@@ -94,6 +100,7 @@ public class RateMasterAutoConfiguration {
     public RateLimitAspect rateLimitAspect(
             TokenBucketRateLimiter tokenBucketRateLimiter,
             io.ratemaster.core.algorithm.SlidingWindowRateLimiter slidingWindowRateLimiter,
+            io.ratemaster.core.algorithm.FixedWindowRateLimiter fixedWindowRateLimiter,
             ApplicationContext applicationContext,
             RateMasterProperties properties,
             RateLimiterFailureHandler failureHandler,
@@ -102,6 +109,7 @@ public class RateMasterAutoConfiguration {
         return new RateLimitAspect(
                 tokenBucketRateLimiter, 
                 slidingWindowRateLimiter,
+                fixedWindowRateLimiter,
                 applicationContext, 
                 properties, 
                 failureHandler, 
