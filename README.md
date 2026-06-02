@@ -13,9 +13,9 @@ High-performance, distributed rate-limiting library for Spring Boot, built on Re
 
 | Algorithm | Status | Redis Structure | Best For |
 | :--- | :--- | :--- | :--- |
-| **Token Bucket** | `v1.0.0-beta` | Hash | General API limits, controlled bursts, smooth request processing. |
-| **Sliding Window** | *Roadmap* | Sorted Set | High-precision enforcement, preventing burst windows. |
-| **Fixed Window** | *Roadmap* | String (TTL) | Basic strict boundaries.* |
+| **Token Bucket** | ✅ `v1.0.0` | Hash | General API limits, controlled bursts, smooth request processing. |
+| **Sliding Window** | 🚧 `v1.1.0` | Sorted Set | High-precision enforcement, preventing burst windows. |
+| **Fixed Window** | 🚧 `v1.2.0` | String (TTL) | Basic strict boundaries.* |
 
 *\*Note on Fixed Window: It suffers from a known edge case where clients can exceed the limit by sending a burst of requests exactly at the boundary of a time window. Use Token Bucket for general use cases.*
 
@@ -30,13 +30,13 @@ Add the starter dependency to your project. It is hosted on GitHub Packages.
 <dependency>
     <groupId>io.ratemaster</groupId>
     <artifactId>ratemaster-spring-boot-starter</artifactId>
-    <version>1.0.0-beta</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
 **Gradle:**
 ```groovy
-implementation 'io.ratemaster:ratemaster-spring-boot-starter:1.0.0-beta'
+implementation 'io.ratemaster:ratemaster-spring-boot-starter:1.0.0'
 ```
 
 ### 1. Minimal Configuration (`application.yml`)

@@ -3,9 +3,9 @@
 **Status**: Aceita | **Data**: 2026-06-01
 
 ## Contexto
-O RateMaster suporta três algoritmos de rate limiting distribuído, cada um com
-características de precisão, consumo de memória Redis e comportamento de borda distintos.
-Esta ADR documenta os trade-offs para guiar a escolha do consumidor.
+O RateMaster v1.0.0 implementa o algoritmo Token Bucket. Sliding Window (v1.1.0)
+e Fixed Window (v1.2.0) fazem parte do roadmap — esta ADR documenta os trade-offs
+planejados para guiar as implementações futuras e orientar a escolha do consumidor.
 
 ## Algoritmos e trade-offs
 
