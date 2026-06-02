@@ -11,6 +11,10 @@ import java.lang.annotation.*;
  * <p>This annotation is intercepted by an AOP aspect to enforce limits using
  * the distributed Token Bucket algorithm.</p>
  *
+ * <p>Values for {@code capacity} and {@code refillRate} must be positive (&gt; 0).
+ * If invalid values are provided, an {@link IllegalArgumentException} will be thrown
+ * at runtime on the first invocation.</p>
+ *
  * @since 0.1.0
  */
 @Target({ElementType.METHOD, ElementType.TYPE})

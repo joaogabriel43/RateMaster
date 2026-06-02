@@ -34,6 +34,24 @@ ratemaster/                          (Parent POM - aggregator)
 - **O que**: O artefato correto para AOP no Spring Boot é `spring-boot-starter-aop` (que embute o aspectjweaver).
 - **Como prevenir**: Nunca utilizar nomes inferidos sem validação no Maven Central. Sempre usar `spring-boot-starter-aop`.
 
+### [2026-06-01] Injeção de chave Redis via resolvedKey não sanitizado
+**O que**: headers HTTP arbitrários (X-Forwarded-For, custom headers) chegam crus
+no KeyResolver e são concatenados na chave Redis — permite key collision entre buckets.
+**Como prevenir**: sempre sanitizar o resolvedKey antes de compor a chave final.
+RateLimitKeyUtils.sanitize() substitui ':' por '-' e remove chars especiais do Redis.
+Aplicar no Aspect, não no Resolver (o Resolver é SPI do consumidor — não controlamos).
+
+### [2026-06-01] @Positive não funciona em atributos de @interface Java
+Bean Validation constraints (@Positive, @Min, etc.) não operam em campos de annotation.
+Validação de atributos de annotation = fail-fast no Aspect na primeira invocação.
+Nunca tentar anotar atributos de @interface com constraints de BV.
+
+## 📐 Padrões do Projeto
+
+### Validação de atributos de annotation
+Validar no Aspect (início do @Around), lançar IllegalArgumentException com mensagem
+clara informando qual método e qual atributo está inválido.
+
 ## 🏛️ ADRs (Novas Entradas)
 ### ADR-005: Porta Redis no core, adapter Spring Data no starter
 - **Contexto**: core é Spring-free mas precisa executar Lua no Redis.

@@ -64,11 +64,17 @@ public class RateLimitAspect {
     @Around("@annotation(rateLimit)")
     public Object intercept(ProceedingJoinPoint joinPoint, RateLimit rateLimit) throws Throwable {
         
+        if (rateLimit.capacity() <= 0 || rateLimit.refillRate() <= 0) {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            throw new IllegalArgumentException(
+                "RateLimit on " + signature.getMethod().getName() + ": capacity and refillRate must be positive");
+        }
+        
         TokenBucketConfig config = new TokenBucketConfig(rateLimit.capacity(), rateLimit.refillRate());
 
         RateLimitKeyResolver resolver = getResolver(rateLimit.keyResolver());
         MethodInvocation invocation = getMethodInvocation(joinPoint);
-        String resolvedKey = resolver.resolveKey(invocation);
+        String resolvedKey = io.ratemaster.starter.resolver.RateLimitKeyUtils.sanitize(resolver.resolveKey(invocation));
 
         String logicalKey = rateLimit.name() + ":" + resolvedKey;
 

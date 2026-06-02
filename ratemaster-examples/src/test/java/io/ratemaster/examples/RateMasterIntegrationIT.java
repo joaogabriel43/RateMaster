@@ -15,6 +15,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +42,9 @@ class RateMasterIntegrationIT {
 
     @LocalServerPort
     private int port;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @Test
     void shouldEnforceRateLimitAndReturn429WithRetryAfter() {
@@ -118,6 +124,37 @@ class RateMasterIntegrationIT {
             assertThat(metricsRejected).isNotNull();
             assertThat(metricsAllowed.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(metricsRejected.getStatusCode()).isEqualTo(HttpStatus.OK);
+            
+            Counter rejectedCounter = meterRegistry.find("ratemaster.requests.rejected")
+                .tag("reason", "REDIS_FALLBACK_CLOSED")
+                .counter();
+            assertThat(rejectedCounter).isNotNull();
+            assertThat(rejectedCounter.count()).isGreaterThan(0);
         });
+    }
+
+    @Test
+    void shouldSanitizeMaliciousKey() {
+        RestClient restClient = RestClient.builder().baseUrl("http://localhost:" + port).build();
+        
+        // Use HeaderKeyResolver (assuming demo endpoint uses a custom header, or we can just pass a malicious header if we have an endpoint)
+        // Wait, DemoController's /api/hello uses IpKeyResolver. We can send a malicious X-Forwarded-For header.
+        ResponseEntity<Map> response = restClient.get()
+                .uri("/api/hello")
+                .header("X-Forwarded-For", "1.2.3.4:ratemaster:tokenbucket:other:user")
+                .retrieve()
+                .toEntity(Map.class);
+                
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        
+        // Assert that the metric is recorded with the sanitized key!
+        // The original is "1.2.3.4:ratemaster:tokenbucket:other:user"
+        // Sanitized should be "1.2.3.4-ratemaster-tokenbucket-other-user"
+        Counter allowedCounter = meterRegistry.find("ratemaster.requests.allowed")
+                .tag("clientKey", "1.2.3.4-ratemaster-tokenbucket-other-user")
+                .counter();
+                
+        assertThat(allowedCounter).isNotNull();
+        assertThat(allowedCounter.count()).isGreaterThan(0);
     }
 }
