@@ -31,18 +31,36 @@ public @interface RateLimit {
     String name();
 
     /**
-     * The maximum burst capacity of the token bucket.
+     * The algorithm used to enforce the rate limit.
      *
-     * @return the maximum number of tokens
+     * @return the algorithm
+     */
+    RateLimitAlgorithm algorithm() default RateLimitAlgorithm.TOKEN_BUCKET;
+
+    /**
+     * The maximum number of requests allowed.
+     * This corresponds to burst capacity for Token Bucket,
+     * and the total requests in the window for Sliding Window.
+     *
+     * @return the maximum number of requests/tokens
      */
     long capacity();
 
     /**
+     * The window duration in seconds.
+     * (Applicable only to SLIDING_WINDOW and FIXED_WINDOW).
+     *
+     * @return the window in seconds
+     */
+    long windowSeconds() default 60L;
+
+    /**
      * The rate at which tokens are replenished, in tokens per second.
+     * (Applicable only to TOKEN_BUCKET).
      *
      * @return the refill rate
      */
-    double refillRate();
+    double refillRate() default 1.0;
 
     /**
      * The resolver class used to extract the dynamic part of the key

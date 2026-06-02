@@ -43,28 +43,22 @@ import java.util.concurrent.Executors;
 public class RateMasterAutoConfiguration {
 
     @Bean
-    @ConditionalOnMissingBean
-    @SuppressWarnings("rawtypes")
-    public RedisScript<List> tokenBucketRedisScript() {
-        DefaultRedisScript<List> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("lua/token_bucket.lua"));
-        script.setResultType(List.class);
-        return script;
-    }
-
-    @Bean
     @ConditionalOnMissingBean(LuaScriptExecutor.class)
-    @SuppressWarnings("unchecked")
     public SpringDataRedisScriptExecutor springDataRedisScriptExecutor(
-            StringRedisTemplate stringRedisTemplate,
-            RedisScript<List> tokenBucketRedisScript) {
-        return new SpringDataRedisScriptExecutor(stringRedisTemplate, tokenBucketRedisScript);
+            StringRedisTemplate stringRedisTemplate) {
+        return new SpringDataRedisScriptExecutor(stringRedisTemplate);
     }
 
     @Bean
     @ConditionalOnMissingBean
     public TokenBucketRateLimiter tokenBucketRateLimiter(LuaScriptExecutor luaScriptExecutor) {
         return new TokenBucketRateLimiter(luaScriptExecutor);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public io.ratemaster.core.algorithm.SlidingWindowRateLimiter slidingWindowRateLimiter(LuaScriptExecutor luaScriptExecutor) {
+        return new io.ratemaster.core.algorithm.SlidingWindowRateLimiter(luaScriptExecutor);
     }
 
     @Bean
@@ -99,6 +93,7 @@ public class RateMasterAutoConfiguration {
     @ConditionalOnMissingBean
     public RateLimitAspect rateLimitAspect(
             TokenBucketRateLimiter tokenBucketRateLimiter,
+            io.ratemaster.core.algorithm.SlidingWindowRateLimiter slidingWindowRateLimiter,
             ApplicationContext applicationContext,
             RateMasterProperties properties,
             RateLimiterFailureHandler failureHandler,
@@ -106,6 +101,7 @@ public class RateMasterAutoConfiguration {
             @Qualifier("rateMasterExecutor") Executor rateMasterExecutor) {
         return new RateLimitAspect(
                 tokenBucketRateLimiter, 
+                slidingWindowRateLimiter,
                 applicationContext, 
                 properties, 
                 failureHandler, 

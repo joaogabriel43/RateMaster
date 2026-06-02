@@ -3,9 +3,12 @@ package io.ratemaster.starter.aop;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.ratemaster.core.algorithm.TokenBucketRateLimiter;
+import io.ratemaster.core.algorithm.SlidingWindowRateLimiter;
 import io.ratemaster.core.config.TokenBucketConfig;
+import io.ratemaster.core.config.SlidingWindowConfig;
 import io.ratemaster.core.model.RateLimitResult;
 import io.ratemaster.starter.annotation.RateLimit;
+import io.ratemaster.starter.annotation.RateLimitAlgorithm;
 import io.ratemaster.starter.autoconfigure.RateMasterProperties;
 import io.ratemaster.starter.exception.RateLimitExceededException;
 import io.ratemaster.starter.exception.RedisUnavailableException;
@@ -37,7 +40,8 @@ import java.util.concurrent.TimeUnit;
 @Aspect
 public class RateLimitAspect {
 
-    private final TokenBucketRateLimiter rateLimiter;
+    private final TokenBucketRateLimiter tokenBucketRateLimiter;
+    private final SlidingWindowRateLimiter slidingWindowRateLimiter;
     private final ApplicationContext applicationContext;
     private final RateMasterProperties properties;
     private final RateLimiterFailureHandler failureHandler;
@@ -47,13 +51,15 @@ public class RateLimitAspect {
     private final ConcurrentMap<Class<? extends RateLimitKeyResolver>, RateLimitKeyResolver> resolverCache = new ConcurrentHashMap<>();
 
     public RateLimitAspect(
-            TokenBucketRateLimiter rateLimiter, 
+            TokenBucketRateLimiter tokenBucketRateLimiter, 
+            SlidingWindowRateLimiter slidingWindowRateLimiter,
             ApplicationContext applicationContext,
             RateMasterProperties properties,
             RateLimiterFailureHandler failureHandler,
             ObjectProvider<MeterRegistry> meterRegistryProvider,
             Executor executor) {
-        this.rateLimiter = Objects.requireNonNull(rateLimiter, "rateLimiter must not be null");
+        this.tokenBucketRateLimiter = Objects.requireNonNull(tokenBucketRateLimiter, "tokenBucketRateLimiter must not be null");
+        this.slidingWindowRateLimiter = Objects.requireNonNull(slidingWindowRateLimiter, "slidingWindowRateLimiter must not be null");
         this.applicationContext = Objects.requireNonNull(applicationContext, "applicationContext must not be null");
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.failureHandler = Objects.requireNonNull(failureHandler, "failureHandler must not be null");
@@ -64,13 +70,23 @@ public class RateLimitAspect {
     @Around("@annotation(rateLimit)")
     public Object intercept(ProceedingJoinPoint joinPoint, RateLimit rateLimit) throws Throwable {
         
-        if (rateLimit.capacity() <= 0 || rateLimit.refillRate() <= 0) {
+        if (rateLimit.capacity() <= 0) {
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
             throw new IllegalArgumentException(
-                "RateLimit on " + signature.getMethod().getName() + ": capacity and refillRate must be positive");
+                "RateLimit on " + signature.getMethod().getName() + ": capacity must be positive");
         }
         
-        TokenBucketConfig config = new TokenBucketConfig(rateLimit.capacity(), rateLimit.refillRate());
+        if (rateLimit.algorithm() == RateLimitAlgorithm.TOKEN_BUCKET && rateLimit.refillRate() <= 0) {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            throw new IllegalArgumentException(
+                "RateLimit on " + signature.getMethod().getName() + ": refillRate must be positive for TOKEN_BUCKET");
+        }
+
+        if (rateLimit.algorithm() == RateLimitAlgorithm.SLIDING_WINDOW && rateLimit.windowSeconds() <= 0) {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            throw new IllegalArgumentException(
+                "RateLimit on " + signature.getMethod().getName() + ": windowSeconds must be positive for SLIDING_WINDOW");
+        }
 
         RateLimitKeyResolver resolver = getResolver(rateLimit.keyResolver());
         MethodInvocation invocation = getMethodInvocation(joinPoint);
@@ -80,7 +96,7 @@ public class RateLimitAspect {
 
         RateLimitResult result;
         try {
-            result = CompletableFuture.supplyAsync(() -> rateLimiter.tryAcquire(logicalKey, config), executor)
+            result = CompletableFuture.supplyAsync(() -> executeRateLimiter(rateLimit, logicalKey), executor)
                     .orTimeout(properties.getRedis().getCommandTimeoutMs(), TimeUnit.MILLISECONDS)
                     .join();
         } catch (Exception ex) {
@@ -168,5 +184,15 @@ public class RateLimitAspect {
                 return method;
             }
         };
+    }
+
+    private RateLimitResult executeRateLimiter(RateLimit rateLimit, String logicalKey) {
+        if (rateLimit.algorithm() == RateLimitAlgorithm.SLIDING_WINDOW) {
+            SlidingWindowConfig config = new SlidingWindowConfig(rateLimit.capacity(), rateLimit.windowSeconds());
+            return slidingWindowRateLimiter.tryAcquire(logicalKey, config);
+        } else {
+            TokenBucketConfig config = new TokenBucketConfig(rateLimit.capacity(), rateLimit.refillRate());
+            return tokenBucketRateLimiter.tryAcquire(logicalKey, config);
+        }
     }
 }

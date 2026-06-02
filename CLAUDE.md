@@ -60,4 +60,8 @@ clara informando qual método e qual atributo está inválido.
 - **Status**: Aceita
 
 ### ADR-006: Spring Boot 4.0.x (pendente verificação de compat no Sprint 2)
-- **Status**: Em revisão (Não afeta a Sprint 1).
+### ADR-008: @RateLimit com atributos unificados por algoritmo
+- **Contexto**: Diferentes algoritmos exigem parâmetros distintos (ex: `windowSeconds` para Sliding Window, `refillRate` para Token Bucket).
+- **Decisão**: A anotação `@RateLimit` unificará os atributos opcionais. O atributo `algorithm` (Enum `RateLimitAlgorithm`) definirá o motor. Atributos irrelevantes para o algoritmo selecionado serão ignorados.
+- **Consequências**: API única e ergonômica; 100% backward compatible com implementações atuais do Token Bucket.
+- **Status**: Aceita
