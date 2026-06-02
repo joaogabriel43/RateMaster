@@ -46,6 +46,24 @@ Bean Validation constraints (@Positive, @Min, etc.) não operam em campos de ann
 Validação de atributos de annotation = fail-fast no Aspect na primeira invocação.
 Nunca tentar anotar atributos de @interface com constraints de BV.
 
+### [2026-06-02] Documentação afirmando código inexistente antes de release
+- **O que**: README e ADR-007 descreviam três algoritmos (Token Bucket, Sliding Window,
+  Fixed Window) como implementados, mas só o Token Bucket existia na branch alvo da v1.0.0.
+  Quase resultou numa tag v1.0.0 desonesta. As versões também divergiam
+  (POM `0.1.0-SNAPSHOT` × README/tag `1.0.0-beta`).
+- **Como prevenir**: antes de taggear qualquer release, validar que README e ADRs refletem
+  o que está REALMENTE implementado na branch alvo. Branches `feat/*` não-mergeadas
+  (ex.: `feat/sliding-window`, `feat/fixed-window`) NÃO contam como entregue. Conferir
+  versão única e consistente em todos os POMs + snippets do README + tag git.
+
+### [2026-06-02] Resumos de IA (Gemini) podem fabricar fatos — ler os arquivos reais
+- **O que**: revisões e resumos gerados por IA podem afirmar premissas falsas
+  (ex.: "três algoritmos implementados") que não correspondem ao código existente.
+  Agir sobre o resumo sem abrir os arquivos propaga o erro adiante.
+- **Como prevenir**: em auditorias, reviews e validações de release, ler sempre os
+  arquivos-fonte reais — nunca resumos. Tratar qualquer resumo de IA como hipótese
+  a verificar contra o código, não como fato consolidado.
+
 ## 📐 Padrões do Projeto
 
 ### Validação de atributos de annotation
