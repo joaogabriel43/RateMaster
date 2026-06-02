@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    SpotBugs exclusion filter.
+
+    Each exclusion below is intentional and justified. Do not add blanket
+    (project-wide) suppressions here; scope every entry to a class and bug pattern.
+-->
+<FindBugsFilter>
+
+    <!--
+        @ConfigurationProperties getters intentionally return the nested mutable
+        holders (Redis, Executor) so Spring Boot can bind nested properties such as
+        `ratemaster.redis.command-timeout-ms`. Returning defensive copies would break
+        property binding. EI_EXPOSE_REP / EI_EXPOSE_REP2 are false positives here.
+    -->
+    <Match>
+        <Class name="io.ratemaster.starter.autoconfigure.RateMasterProperties"/>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+
+</FindBugsFilter>

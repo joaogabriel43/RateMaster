@@ -34,7 +34,7 @@ import java.util.Objects;
  *
  * @since 0.1.0
  */
-public class TokenBucketRateLimiter {
+public final class TokenBucketRateLimiter {
 
     private static final String KEY_PREFIX = "ratemaster:tokenbucket:";
     private static final String LUA_SCRIPT_PATH = "/lua/token_bucket.lua";
