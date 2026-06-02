@@ -30,6 +30,13 @@
 
         <!-- Spring Boot -->
         <spring-boot.version>4.0.6</spring-boot.version>
+        <!-- Patched Tomcat version for CVE-2026-41293 / -43512 / -43515
+             (CRITICAL in tomcat-embed-core 11.0.21, fixed in 11.0.22).
+             We import the Spring Boot BOM rather than inherit its parent, so a
+             property override is NOT honored for BOM-managed versions; the
+             tomcat-embed-* artifacts are pinned explicitly in dependencyManagement
+             (declared before the BOM import to take precedence). -->
+        <tomcat.version>11.0.22</tomcat.version>
 
         <!-- Testing -->
         <testcontainers.version>1.21.4</testcontainers.version>
@@ -53,6 +60,25 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- CVE patch: pin Tomcat embed artifacts ahead of the Spring Boot BOM
+                 import so these versions win (property override is ineffective for
+                 imported BOMs). Fixes CVE-2026-41293 / -43512 / -43515. -->
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-el</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-websocket</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+
             <!-- Spring Boot BOM -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
