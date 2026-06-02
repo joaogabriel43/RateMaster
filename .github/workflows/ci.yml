@@ -121,10 +121,34 @@ jobs:
             .
 
       # ---------------------------------------------------------------
-      # OWASP Dependency-Check (Maven Plugin)
+      # Install reactor artifacts so cross-module dependencies
+      # (e.g. ratemaster-core) resolve for the Maven-based analyzers below.
+      # Without this, `dependency-check:check` fails to resolve
+      # ratemaster-core:<version> for the starter module.
       # ---------------------------------------------------------------
+      - name: Build and install modules
+        run: mvn install -B -DskipTests --no-transfer-progress
+
+      # ---------------------------------------------------------------
+      # OWASP Dependency-Check (Maven Plugin)
+      # NVD data is cached across runs; set an optional NVD_API_KEY repository
+      # secret to make the NVD update dramatically faster and more reliable.
+      # ---------------------------------------------------------------
+      - name: Cache OWASP NVD database
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.dc-data
+          key: owasp-nvd-${{ github.run_id }}
+          restore-keys: |
+            owasp-nvd-
+
       - name: Run OWASP Dependency-Check
-        run: mvn dependency-check:check -B --no-transfer-progress
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: >-
+          mvn dependency-check:check -B --no-transfer-progress
+          -DdataDirectory="${{ github.workspace }}/.dc-data"
+          ${NVD_API_KEY:+-DnvdApiKey="$NVD_API_KEY"}
 
       # ---------------------------------------------------------------
       # SpotBugs - Static Analysis (Maven Plugin)
