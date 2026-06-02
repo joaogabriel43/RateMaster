@@ -18,6 +18,10 @@
         capabilities for local development and integration testing.
     </description>
 
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
     <dependencies>
         <!-- RateMaster Spring Boot Starter -->
         <dependency>
