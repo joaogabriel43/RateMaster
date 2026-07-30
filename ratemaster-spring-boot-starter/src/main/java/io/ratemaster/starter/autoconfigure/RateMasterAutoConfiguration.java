@@ -4,19 +4,16 @@ import io.ratemaster.core.algorithm.TokenBucketRateLimiter;
 import io.ratemaster.core.port.LuaScriptExecutor;
 import io.ratemaster.starter.adapter.SpringDataRedisScriptExecutor;
 import io.ratemaster.starter.aop.RateLimitAspect;
+import io.ratemaster.starter.cache.LocalPenaltyBox;
 import io.ratemaster.starter.resolver.IpKeyResolver;
 import io.ratemaster.starter.web.RateLimitExceptionHandler;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.data.redis.core.script.RedisScript;
-
-import java.util.List;
 
 import io.ratemaster.starter.spi.RateLimiterFailureHandler;
 import io.ratemaster.starter.spi.NativeRateLimiterFailureHandler;
@@ -68,6 +65,13 @@ public class RateMasterAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(prefix = "ratemaster.local-cache", name = "enabled", matchIfMissing = true)
+    @ConditionalOnMissingBean
+    public LocalPenaltyBox localPenaltyBox(RateMasterProperties properties) {
+        return new LocalPenaltyBox(properties.getLocalCache().getMaxSize());
+    }
+
+    @Bean
     @ConditionalOnMissingBean
     public IpKeyResolver ipKeyResolver() {
         return new IpKeyResolver();
@@ -105,6 +109,7 @@ public class RateMasterAutoConfiguration {
             RateMasterProperties properties,
             RateLimiterFailureHandler failureHandler,
             ObjectProvider<MeterRegistry> meterRegistryProvider,
+            ObjectProvider<LocalPenaltyBox> localPenaltyBoxProvider,
             @Qualifier("rateMasterExecutor") Executor rateMasterExecutor) {
         return new RateLimitAspect(
                 tokenBucketRateLimiter, 
@@ -114,6 +119,7 @@ public class RateMasterAutoConfiguration {
                 properties, 
                 failureHandler, 
                 meterRegistryProvider, 
+                localPenaltyBoxProvider,
                 rateMasterExecutor
         );
     }

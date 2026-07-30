@@ -157,4 +157,56 @@ class RateMasterIntegrationIT {
         assertThat(allowedCounter).isNotNull();
         assertThat(allowedCounter.count()).isGreaterThan(0);
     }
+
+    @Test
+    void shouldEnforceRateLimitViaL1CacheAndInjectHeaders() {
+        RestClient restClient = RestClient.builder().baseUrl("http://localhost:" + port).build();
+        
+        // Let's use a unique IP for this test to not clash with others
+        String uniqueIp = "10.0.0.99";
+
+        // 1st request - should pass
+        ResponseEntity<Map> response1 = restClient.get()
+                .uri("/api/hello")
+                .header("X-Forwarded-For", uniqueIp)
+                .retrieve()
+                .toEntity(Map.class);
+                
+        assertThat(response1.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response1.getHeaders().getFirst("X-RateLimit-Limit")).isEqualTo("2");
+        assertThat(response1.getHeaders().getFirst("X-RateLimit-Remaining")).isNotNull();
+
+        // 2nd request - should pass
+        ResponseEntity<Map> response2 = restClient.get()
+                .uri("/api/hello")
+                .header("X-Forwarded-For", uniqueIp)
+                .retrieve()
+                .toEntity(Map.class);
+        assertThat(response2.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // 3rd request - fails via Redis, goes to Penalty Box
+        HttpClientErrorException exRedis = catchThrowableOfType(
+                () -> restClient.get().uri("/api/hello").header("X-Forwarded-For", uniqueIp).retrieve().toEntity(Map.class),
+                HttpClientErrorException.class
+        );
+        assertThat(exRedis).isNotNull();
+        assertThat(exRedis.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(exRedis.getResponseHeaders().getFirst("X-RateLimit-Limit")).isEqualTo("2");
+        assertThat(exRedis.getResponseHeaders().getFirst("X-RateLimit-Remaining")).isEqualTo("0");
+
+        // 4th request - fails via L1 Cache immediately (Fast Fail)
+        HttpClientErrorException exL1 = catchThrowableOfType(
+                () -> restClient.get().uri("/api/hello").header("X-Forwarded-For", uniqueIp).retrieve().toEntity(Map.class),
+                HttpClientErrorException.class
+        );
+        assertThat(exL1).isNotNull();
+        assertThat(exL1.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        // Ensure L1 cache metrics were incremented
+        Counter l1CacheCounter = meterRegistry.find("ratemaster.requests.rejected")
+                .tag("reason", "LOCAL_CACHE")
+                .counter();
+        
+        assertThat(l1CacheCounter).isNotNull();
+        assertThat(l1CacheCounter.count()).isGreaterThan(0);
+    }
 }

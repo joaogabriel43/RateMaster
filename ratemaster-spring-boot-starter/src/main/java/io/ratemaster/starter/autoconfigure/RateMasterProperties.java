@@ -7,6 +7,7 @@ public class RateMasterProperties {
 
     private final Redis redis = new Redis();
     private final Executor executor = new Executor();
+    private final LocalCache localCache = new LocalCache();
 
     public Redis getRedis() {
         return redis;
@@ -14,6 +15,10 @@ public class RateMasterProperties {
 
     public Executor getExecutor() {
         return executor;
+    }
+
+    public LocalCache getLocalCache() {
+        return localCache;
     }
 
     public static class Redis {
@@ -58,6 +63,36 @@ public class RateMasterProperties {
         }
 
         public void setMaxSize(int maxSize) {
+            this.maxSize = maxSize;
+        }
+    }
+
+    public static class LocalCache {
+        /**
+         * Whether the L1 Local Cache (Penalty Box) is enabled.
+         * Default is true.
+         */
+        private boolean enabled = true;
+
+        /**
+         * Maximum number of keys to store in the L1 Cache before eviction.
+         * Default is 10000.
+         */
+        private long maxSize = 10000;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public long getMaxSize() {
+            return maxSize;
+        }
+
+        public void setMaxSize(long maxSize) {
             this.maxSize = maxSize;
         }
     }

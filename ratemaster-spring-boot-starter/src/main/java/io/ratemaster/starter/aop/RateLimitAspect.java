@@ -12,9 +12,21 @@ import io.ratemaster.core.model.RateLimitResult;
 import io.ratemaster.starter.annotation.RateLimit;
 import io.ratemaster.starter.annotation.RateLimitAlgorithm;
 import io.ratemaster.starter.autoconfigure.RateMasterProperties;
+import io.ratemaster.starter.cache.LocalPenaltyBox;
 import io.ratemaster.starter.exception.RateLimitExceededException;
 import io.ratemaster.starter.exception.RedisUnavailableException;
 import io.ratemaster.starter.resolver.RateLimitKeyResolver;
+import io.ratemaster.starter.spi.RateLimiterFailureHandler;
+import org.aopalliance.intercept.MethodInvocation;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletResponse;
 import io.ratemaster.starter.spi.RateLimiterFailureHandler;
 import org.aopalliance.intercept.MethodInvocation;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -49,6 +61,7 @@ public class RateLimitAspect {
     private final RateMasterProperties properties;
     private final RateLimiterFailureHandler failureHandler;
     private final ObjectProvider<MeterRegistry> meterRegistryProvider;
+    private final ObjectProvider<LocalPenaltyBox> localPenaltyBoxProvider;
     private final Executor executor;
     
     private final ConcurrentMap<Class<? extends RateLimitKeyResolver>, RateLimitKeyResolver> resolverCache = new ConcurrentHashMap<>();
@@ -61,6 +74,7 @@ public class RateLimitAspect {
             RateMasterProperties properties,
             RateLimiterFailureHandler failureHandler,
             ObjectProvider<MeterRegistry> meterRegistryProvider,
+            ObjectProvider<LocalPenaltyBox> localPenaltyBoxProvider,
             Executor executor) {
         this.tokenBucketRateLimiter = Objects.requireNonNull(tokenBucketRateLimiter, "tokenBucketRateLimiter must not be null");
         this.slidingWindowRateLimiter = Objects.requireNonNull(slidingWindowRateLimiter, "slidingWindowRateLimiter must not be null");
@@ -69,6 +83,7 @@ public class RateLimitAspect {
         this.properties = Objects.requireNonNull(properties, "properties must not be null");
         this.failureHandler = Objects.requireNonNull(failureHandler, "failureHandler must not be null");
         this.meterRegistryProvider = Objects.requireNonNull(meterRegistryProvider, "meterRegistryProvider must not be null");
+        this.localPenaltyBoxProvider = Objects.requireNonNull(localPenaltyBoxProvider, "localPenaltyBoxProvider must not be null");
         this.executor = Objects.requireNonNull(executor, "executor must not be null");
     }
 
@@ -105,6 +120,17 @@ public class RateLimitAspect {
 
         String logicalKey = rateLimit.name() + ":" + resolvedKey;
 
+        LocalPenaltyBox penaltyBox = localPenaltyBoxProvider.getIfAvailable();
+        if (penaltyBox != null && penaltyBox.isPenalized(logicalKey)) {
+            long remainingMillis = penaltyBox.getPenaltyRemainingMillis(logicalKey);
+            recordMetric("ratemaster.requests.rejected", rateLimit.name(), resolvedKey, "LOCAL_CACHE");
+            injectRateLimitHeaders(rateLimit.capacity(), 0);
+            throw new RateLimitExceededException(
+                    "Rate limit exceeded (Local L1 Cache) for bucket: " + rateLimit.name(),
+                    remainingMillis
+            );
+        }
+
         RateLimitResult result;
         try {
             result = CompletableFuture.supplyAsync(() -> executeRateLimiter(rateLimit, logicalKey), executor)
@@ -130,13 +156,33 @@ public class RateLimitAspect {
 
         if (result.allowed()) {
             recordMetric("ratemaster.requests.allowed", rateLimit.name(), resolvedKey, null);
+            injectRateLimitHeaders(rateLimit.capacity(), result.remainingTokens());
             return joinPoint.proceed();
         } else {
+            if (penaltyBox != null) {
+                penaltyBox.penalize(logicalKey, result.retryAfterMillis());
+            }
             recordMetric("ratemaster.requests.rejected", rateLimit.name(), resolvedKey, "RATE_LIMIT");
+            injectRateLimitHeaders(rateLimit.capacity(), 0);
             throw new RateLimitExceededException(
                     "Rate limit exceeded for bucket: " + rateLimit.name(),
                     result.retryAfterMillis()
             );
+        }
+    }
+
+    private void injectRateLimitHeaders(long limit, long remaining) {
+        try {
+            var attributes = RequestContextHolder.getRequestAttributes();
+            if (attributes instanceof ServletRequestAttributes servletAttributes) {
+                HttpServletResponse response = servletAttributes.getResponse();
+                if (response != null) {
+                    response.setHeader("X-RateLimit-Limit", String.valueOf(limit));
+                    response.setHeader("X-RateLimit-Remaining", String.valueOf(remaining));
+                }
+            }
+        } catch (Exception e) {
+            // Silently ignore if not in a web context
         }
     }
 
