@@ -1,0 +1,100 @@
+<div class="layout-container">
+  <!-- Sidebar -->
+  <aside class="sidebar glass-panel">
+    <div class="logo">
+      <h2 class="text-gradient-accent">RateMaster</h2>
+    </div>
+    <nav class="nav-links">
+      <a href="#" class="nav-link active">
+        <span class="icon">📊</span> Dashboard
+      </a>
+      <a href="#" class="nav-link">
+        <span class="icon">⚡</span> Clusters
+      </a>
+      <a href="#" class="nav-link">
+        <span class="icon">⚙️</span> Settings
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Topbar -->
+    <header class="topbar glass-panel">
+      <div class="search-bar">
+        <input type="text" placeholder="Search clusters..." class="search-input glass-panel">
+      </div>
+      <div class="profile">
+        <div class="avatar">
+          <span>RM</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Dashboard Content -->
+    <div class="content animate-fade-in">
+      <header class="page-header">
+        <h1>Overview</h1>
+        <p class="text-muted">Real-time distributed rate limiting metrics.</p>
+      </header>
+
+      <!-- Stats Row -->
+      <section class="stats-grid">
+        <app-stat-card 
+          title="Total Requests" 
+          value="1.2M" 
+          trend="+12%" 
+          trendType="up" 
+          icon="🌐">
+        </app-stat-card>
+        <app-stat-card 
+          title="Blocked (Redis)" 
+          value="45K" 
+          trend="-2%" 
+          trendType="down" 
+          icon="🛡️">
+        </app-stat-card>
+        <app-stat-card 
+          title="L1 Cache Penalty" 
+          value="8.4K" 
+          trend="+5%" 
+          trendType="up" 
+          icon="⚡">
+        </app-stat-card>
+        <app-stat-card 
+          title="Avg Latency" 
+          value="2.3ms" 
+          trend="-0.5ms" 
+          trendType="down" 
+          icon="⏱️">
+        </app-stat-card>
+      </section>
+
+      <!-- Charts Row -->
+      <section class="charts-grid">
+        <div class="chart-container glass-panel animate-fade-in" style="animation-delay: 0.1s;">
+          <div class="chart-header">
+            <h3>Traffic Analysis</h3>
+            <span class="badge">Live</span>
+          </div>
+          <app-traffic-chart></app-traffic-chart>
+        </div>
+        
+        <div class="chart-container glass-panel animate-fade-in" style="animation-delay: 0.2s;">
+          <div class="chart-header">
+            <h3>Top Blocked Clients</h3>
+          </div>
+          <div class="list-placeholder">
+            <div class="list-item" *ngFor="let item of [1,2,3,4]">
+              <div class="client-info">
+                <span class="client-ip">192.168.1.{{item * 24}}</span>
+                <span class="client-reason text-muted">Fixed Window</span>
+              </div>
+              <span class="client-count">{{item * 123}} req/s</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

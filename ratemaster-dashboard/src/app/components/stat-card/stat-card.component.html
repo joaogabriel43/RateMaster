@@ -1,0 +1,20 @@
+<div class="stat-card glass-panel animate-fade-in">
+  <div class="stat-header">
+    <h3 class="stat-title text-muted">{{ title }}</h3>
+    <div class="stat-icon">{{ icon }}</div>
+  </div>
+  
+  <div class="stat-body">
+    <div class="stat-value">{{ value }}</div>
+  </div>
+  
+  <div class="stat-footer">
+    <span class="trend" [ngClass]="trendType">
+      <span class="trend-icon" *ngIf="trendType === 'up'">↗</span>
+      <span class="trend-icon" *ngIf="trendType === 'down'">↘</span>
+      <span class="trend-icon" *ngIf="trendType === 'neutral'">→</span>
+      {{ trend }}
+    </span>
+    <span class="trend-label text-muted">vs last hour</span>
+  </div>
+</div>

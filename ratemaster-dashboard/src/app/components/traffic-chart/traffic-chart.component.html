@@ -1,0 +1,30 @@
+<div class="chart-wrapper">
+  <div class="y-axis">
+    <span>100</span>
+    <span>75</span>
+    <span>50</span>
+    <span>25</span>
+    <span>0</span>
+  </div>
+  
+  <div class="chart-bars">
+    <div class="bar-group" *ngFor="let point of dataPoints; let i = index">
+      <div class="bar-container tooltip-trigger">
+        <div class="bar allowed" [style.height.%]="point.allowedHeight"></div>
+        <div class="bar blocked" [style.height.%]="point.blockedHeight"></div>
+        
+        <!-- Tooltip -->
+        <div class="tooltip glass-panel">
+          <strong>{{ point.time }}</strong>
+          <div class="tooltip-row">
+            <span class="dot allowed-dot"></span> Allowed: {{ point.allowedHeight }}
+          </div>
+          <div class="tooltip-row">
+            <span class="dot blocked-dot"></span> Blocked: {{ point.blockedHeight }}
+          </div>
+        </div>
+      </div>
+      <div class="x-label" *ngIf="i % 4 === 0">{{ point.time }}</div>
+    </div>
+  </div>
+</div>

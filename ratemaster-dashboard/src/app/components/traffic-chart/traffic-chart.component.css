@@ -1,0 +1,142 @@
+.chart-wrapper {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  gap: 1rem;
+  padding-top: 1rem;
+  position: relative;
+}
+
+.y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  padding-bottom: 24px;
+}
+
+.chart-bars {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border-glass);
+  padding-bottom: 24px;
+  position: relative;
+}
+
+/* Horizontal Grid Lines */
+.chart-bars::before {
+  content: '';
+  position: absolute;
+  top: 25%;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.05);
+  z-index: 0;
+}
+
+.chart-bars::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.05);
+  z-index: 0;
+}
+
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.bar-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  width: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  overflow: visible;
+  position: relative;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.bar-container:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bar {
+  width: 100%;
+  border-radius: 2px;
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bar.allowed {
+  background: linear-gradient(180deg, var(--accent-primary) 0%, rgba(85, 45, 225, 0.5) 100%);
+  margin-bottom: 2px;
+}
+
+.bar.blocked {
+  background: linear-gradient(180deg, var(--accent-danger) 0%, rgba(255, 80, 80, 0.5) 100%);
+}
+
+.x-label {
+  position: absolute;
+  bottom: -24px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Tooltip Styles */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  padding: 0.75rem;
+  min-width: 120px;
+  opacity: 0;
+  visibility: hidden;
+  transition: all var(--transition-fast);
+  pointer-events: none;
+  z-index: 100;
+  font-size: 0.8rem;
+}
+
+.bar-container:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.allowed-dot {
+  background: var(--accent-primary);
+}
+
+.blocked-dot {
+  background: var(--accent-danger);
+}
